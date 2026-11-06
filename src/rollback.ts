@@ -3,14 +3,14 @@
  * Applies the agy binary patch, verifies the proxy works, and rolls back on failure.
  */
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as os from 'os';
 import { backupFile } from './crypto';
 import { startProxy, stopProxy, getProxyPort } from './proxy';
 
 function getAgyVersion(binPath: string): string | null {
   try {
-    const out = execSync(`"${binPath}" --version`, { stdio: 'pipe', timeout: 5000 }).toString().trim();
+    const out = execFileSync(binPath, ['--version'], { stdio: 'pipe', timeout: 5000 }).toString().trim();
     const m = out.match(/(\d+\.\d+\.?\d*)/);
     return m ? m[1] : null;
   } catch {

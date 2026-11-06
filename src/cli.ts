@@ -3,7 +3,7 @@
  * Free Antigravity CLI - Community Edition
  * Wraps the official agy CLI with custom model support via a local proxy.
  */
-import { spawn, execSync } from 'child_process';
+import { spawn, execFileSync, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -12,53 +12,21 @@ import { addModel, removeModel, listModels, ensureConfigDir, saveModels, CustomM
 import { startProxy, getProxyPort, stopProxy } from './proxy';
 import { backupFile, decryptString } from './crypto';
 import { checkAgyCompatibility } from './manifest';
+import { findAgyBinary, isAgyBinaryExecutable } from './platform';
+import { runNativeChat } from './nativeChat';
 
-function searchInPath(): string | null {
-  try {
-    const cmd = os.platform() === 'win32' ? 'where agy' : 'which agy';
-    const out = execSync(cmd, { stdio: 'pipe' }).toString().trim().split('\r\n')[0].split('\n')[0];
-    if (out && fs.existsSync(out)) return out;
-  } catch (e) {
-    if (process.env.ANTIGRAVITY_DEBUG === 'true') {
-      console.debug('[Debug] searchInPath failed:', (e as Error).message);
-    }
-  }
-  return null;
+function isTermuxRuntime(): boolean {
+  return os.platform() === 'linux' && Boolean(process.env.PREFIX?.includes('/com.termux/files/usr'));
 }
 
 function getAgyBin(): string {
-  // 1. User Override
-  if (process.env.AGY_BIN && fs.existsSync(process.env.AGY_BIN)) {
-    return process.env.AGY_BIN;
-  }
-
-  // 2. PATH Search
-  const pathBin = searchInPath();
-  if (pathBin) return pathBin;
-
-  // 3. OS-specific defaults
-  const isWin = os.platform() === 'win32';
-  const binName = isWin ? 'agy.exe' : 'agy';
-  const locations = [
-    // Windows default
-    path.join(os.homedir(), 'AppData', 'Local', 'agy', 'bin', binName),
-    // macOS default Application Support
-    path.join(os.homedir(), 'Library', 'Application Support', 'agy', 'bin', binName),
-    // macOS/Linux local share
-    path.join(os.homedir(), '.local', 'share', 'agy', 'bin', binName),
-    // macOS/Linux local bin fallback
-    path.join(os.homedir(), '.local', 'bin', binName),
-  ];
-
-  for (const loc of locations) {
-    if (fs.existsSync(loc)) return loc;
-  }
-
-  // 4. Default fallback based on platform
-  if (isWin) {
-    return path.join(os.homedir(), 'AppData', 'Local', 'agy', 'bin', 'agy.exe');
-  }
-  return path.join(os.homedir(), '.local', 'share', 'agy', 'bin', 'agy');
+  return findAgyBinary({
+    agyBin: process.env.AGY_BIN,
+    homeDir: os.homedir(),
+    pathValue: process.env.PATH,
+    prefix: process.env.PREFIX,
+    platform: os.platform(),
+  });
 }
 
 async function ensureProxy(): Promise<number> {
@@ -114,7 +82,7 @@ function discoverGoogleUrls(buf: Buffer): string[] {
 
 function getAgyVersion(binPath: string): string | null {
   try {
-    const out = execSync(`"${binPath}" --version`, { stdio: 'pipe', timeout: 5000 }).toString().trim();
+    const out = execFileSync(binPath, ['--version'], { stdio: 'pipe', timeout: 5000 }).toString().trim();
     const m = out.match(/(\d+\.\d+\.?\d*)/);
     return m ? m[1] : null;
   } catch {
@@ -193,9 +161,9 @@ async function startAndDelegate(agyArgs: string[]): Promise<void> {
   // agy starts interactive mode by default when no flags are given
   const agyBin = getAgyBin();
 
-  if (!fs.existsSync(agyBin)) {
+  if (!isAgyBinaryExecutable(agyBin, os.platform())) {
     console.error(`\n[Error] agy CLI not found!`);
-    console.error(`Search location checked: ${agyBin}`);
+    console.error(`Expected an executable agy binary at: ${agyBin}`);
     console.error('\nPlease install the official Antigravity CLI first.');
     console.error('If installed in a custom location, set the AGY_BIN environment variable:');
     console.error('  export AGY_BIN=/path/to/agy\n');
@@ -212,7 +180,7 @@ async function startAndDelegate(agyArgs: string[]): Promise<void> {
   const port = await ensureProxy();
   console.log(`ready (port ${port})\n`);
 
-  const child = spawn(agyBin, agyArgs, { stdio: 'inherit', shell: true });
+  const child = spawn(agyBin, agyArgs, { stdio: 'inherit' });
   child.on('exit', async (code) => { await stopProxy(); process.exit(code || 0); });
   process.on('SIGINT', async () => { child.kill(); await stopProxy(); process.exit(0); });
 }
@@ -228,6 +196,11 @@ async function main(): Promise<void> {
   args = args.filter(a => a !== '--verbose' && a !== '--debug');
 
   const cmd = args[0];
+
+  if (cmd === 'native' || (!cmd && isTermuxRuntime())) {
+    await runNativeChat();
+    return;
+  }
 
   // --- Model management ---
   if (cmd === 'models') {
@@ -341,6 +314,7 @@ Wraps the official agy CLI with custom model support.
 Commands:
   (no args)    Start interactive chat with custom model support
   chat         Same as above
+  native       Start standalone chat without the official agy executable
   models list  List custom models
   models add   Add a custom model
   models remove <name>  Remove a custom model
@@ -349,7 +323,7 @@ Commands:
   version      Show version
   help         This help
 
-Any other arguments are passed directly to agy CLI.`);
+On Termux, the default command starts native chat. Any other arguments are passed directly to agy CLI.`);
     return;
   }
 

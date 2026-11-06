@@ -49,7 +49,7 @@ antigravity
         └── Custom models → injected by proxy into model list
 ```
 
-The CLI is a thin wrapper: it starts a local HTTP proxy that intercepts `fetchAvailableModels` API calls, injects your custom model definitions, then hands off to the official `agy` CLI. You get the full native Antigravity CLI experience plus custom models.
+On desktop, the CLI starts a local HTTP proxy that intercepts `fetchAvailableModels` API calls, injects your custom model definitions, then hands off to the official `agy` CLI. On Termux, it instead runs its built-in native chat directly against the configured model provider.
 
 
 ## Quick Start
@@ -68,12 +68,21 @@ antigravity models add
 antigravity
 ```
 
+For Termux, skip the official `agy` installation and run:
+
+```bash
+pkg install nodejs-lts
+npm install -g free-antigravity-cli
+antigravity models add
+antigravity
+```
+
 
 ## Prerequisites
 
 * **Node.js** >= 18
-* **Official Antigravity CLI** (`agy`) installed at one of the default locations
-* **Google Account Sign-In**: The CLI uses the desktop Antigravity app's authentication. You must be signed in to [Antigravity Desktop](https://antigravity.google) first. The CLI does not have its own login flow.
+* **Desktop proxy mode only**: Official Antigravity CLI (`agy`) installed at one of the default locations
+* **Desktop proxy mode only**: Google Account signed in via [Antigravity Desktop](https://antigravity.google). Termux native chat uses the API key configured for each provider instead.
   * **Windows**: `%LOCALAPPDATA%\agy\bin\agy.exe`
   * **macOS**: `~/Library/Application Support/agy/bin/agy` or `~/.local/share/agy/bin/agy`
   * **Linux**: `~/.local/share/agy/bin/agy`
@@ -82,12 +91,32 @@ antigravity
   export AGY_BIN="/path/to/custom/agy"
   ```
 
+### Linux ARM64 and Termux
+
+The wrapper is implemented in TypeScript/Node.js and has no platform-specific native
+dependencies. Linux ARM64 is covered by the CI build and tests. On Termux, install
+Node.js and npm with `pkg install nodejs-lts`, then install the wrapper with
+`npm install -g free-antigravity-cli`. The wrapper searches `$PATH`, `$PREFIX/bin`,
+and the standard per-user `agy` install locations.
+
+On Termux, the default `antigravity` command starts the built-in native chat; it does
+not download, execute, or patch the official `agy` binary. Add a model first with
+`antigravity models add`. This native mode connects directly to the configured model
+provider and supports conversation history, `/model`, `/clear`, and `/exit`.
+
+The official `agy` executable is still required for the original Antigravity CLI
+experience on desktop Linux. Google does not provide a supported Android/Termux
+desktop authentication flow, so the native Termux chat uses configured provider
+credentials (including Google AI Studio API keys) rather than Antigravity desktop
+sign-in.
+
 
 ## Commands
 
 ```
-antigravity              Start interactive chat (proxy + agy)
-antigravity chat         Same as above
+antigravity              Start native chat on Termux, otherwise desktop proxy + agy
+antigravity chat         Start desktop proxy + agy
+antigravity native       Start standalone native chat without agy
 antigravity models list  List configured custom models
 antigravity models add   Add a new custom model (interactive wizard)
 antigravity models remove <name>  Remove a custom model
@@ -132,6 +161,15 @@ Any arguments not listed above are passed directly to `agy` CLI.
 npm install -g free-antigravity-cli
 antigravity
 ```
+
+On Termux, configure a provider model before launching native chat:
+
+```bash
+antigravity models add
+antigravity
+```
+
+The standalone mode can also be started explicitly on Linux with `antigravity native`.
 
 ### From Source
 
