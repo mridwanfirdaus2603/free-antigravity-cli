@@ -18,7 +18,7 @@ function getRequestUrl(model: CustomModelEntry, provider: string): string {
   }
 
   const isOpenAICompatible = [
-    'openai', 'openrouter', 'custom', 'groq', 'mistral', 'cerebras', 'nvidia',
+    'openai', 'openrouter', 'custom', 'huggingface', 'groq', 'mistral', 'cerebras', 'nvidia',
     'opencode', 'codestral',
   ].includes(model.provider);
   if (isOpenAICompatible && !url.toLowerCase().includes('/chat/completions') && !url.toLowerCase().includes('/completions')) {

@@ -1,5 +1,7 @@
 import { sendNativeMessage } from '../src/nativeChat';
 import { CustomModelEntry } from '../src/config';
+import { getProviderHeaders, supportsStreaming, translateRequest } from '../src/proxy/registry';
+import { validateCustomModel } from '../src/schemaValidator';
 
 describe('native chat provider requests', () => {
   const model: CustomModelEntry = {
@@ -49,5 +51,36 @@ describe('native chat provider requests', () => {
     await expect(sendNativeMessage(model, [
       { role: 'user', parts: [{ text: 'Hello' }] },
     ])).rejects.toThrow('openai API returned HTTP 401: invalid key');
+  });
+
+  test('supports Hugging Face Inference Providers with OpenAI-compatible requests', async () => {
+    const huggingFaceModel: CustomModelEntry = {
+      ...model,
+      provider: 'huggingface',
+      apiKey: 'hf_test-token',
+      apiUrl: 'https://router.huggingface.co/v1/chat/completions',
+      externalModelName: 'Qwen/Qwen3-Test',
+    };
+    let requestUrl = '';
+    let requestOptions: RequestInit | undefined;
+    globalThis.fetch = jest.fn(async (input: unknown, init?: RequestInit) => {
+      requestUrl = String(input);
+      requestOptions = init;
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: 'Hello from Hugging Face' } }],
+      }), { status: 200 });
+    }) as typeof fetch;
+
+    expect(validateCustomModel(huggingFaceModel).valid).toBe(true);
+    expect(supportsStreaming('huggingface')).toBe(true);
+    expect(getProviderHeaders('huggingface', 'hf_test-token').Authorization).toBe('Bearer hf_test-token');
+    expect(translateRequest('huggingface', { contents: [{ role: 'user', parts: [{ text: 'Hello' }] }] }, 'Qwen/Qwen3-Test'))
+      .toMatchObject({ model: 'Qwen/Qwen3-Test', messages: [{ role: 'user', content: 'Hello' }] });
+    await expect(sendNativeMessage(huggingFaceModel, [
+      { role: 'user', parts: [{ text: 'Hello' }] },
+    ])).resolves.toBe('Hello from Hugging Face');
+
+    expect(requestUrl).toBe('https://router.huggingface.co/v1/chat/completions');
+    expect(requestOptions?.headers).toMatchObject({ Authorization: 'Bearer hf_test-token' });
   });
 });

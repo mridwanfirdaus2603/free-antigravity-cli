@@ -58,7 +58,7 @@ function loadTranslators(): void {
 // ─── Public API ───────────────────────────────────────────────────────────
 
 // Providers that use OpenAI-compatible format
-const OPENAI_COMPAT = new Set(['openai', 'ollama', 'openrouter', 'custom', 'groq', 'mistral', 'cerebras', 'nvidia', 'opencode', 'codestral']);
+const OPENAI_COMPAT = new Set(['openai', 'ollama', 'openrouter', 'custom', 'huggingface', 'groq', 'mistral', 'cerebras', 'nvidia', 'opencode', 'codestral']);
 // Providers that use Anthropic-compatible format
 const ANTHROPIC_COMPAT = new Set(['anthropic', 'deepseek', 'kimi', 'fireworks', 'lmstudio', 'llamacpp', 'wafer', 'zai']);
 

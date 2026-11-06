@@ -222,7 +222,7 @@ async function main(): Promise<void> {
       console.log('\n  Add Custom AI Model\n' + '─'.repeat(40));
       const answers = await inquirer.prompt([
         { type: 'list', name: 'provider', message: 'Provider:', choices: [
-          'openai', 'anthropic', 'google', 'ollama', 'openrouter', 'custom',
+          'openai', 'anthropic', 'google', 'ollama', 'openrouter', 'huggingface', 'custom',
           'deepseek', 'groq', 'mistral', 'cerebras', 'kimi', 'fireworks',
           'lmstudio', 'llamacpp', 'nvidia'
         ] },
@@ -236,6 +236,7 @@ async function main(): Promise<void> {
             google: `https://generativelanguage.googleapis.com/v1beta/models/${a.modelId}:generateContent`,
             ollama: 'http://localhost:11434/v1/chat/completions',
             openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+            huggingface: 'https://router.huggingface.co/v1/chat/completions',
             custom: 'https://api.together.xyz/v1',
             deepseek: 'https://api.deepseek.com/anthropic',
             groq: 'https://api.groq.com/openai/v1',

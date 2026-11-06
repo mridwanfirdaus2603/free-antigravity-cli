@@ -141,6 +141,7 @@ Any arguments not listed above are passed directly to `agy` CLI.
 | **Google AI Studio** | `google` | API Key (`AIza...`) |
 | **Ollama (Local)** | `ollama` | None |
 | **OpenRouter** | `openrouter` | API Key |
+| **Hugging Face Inference Providers** | `huggingface` | Hugging Face User Access Token |
 | **DeepSeek** | `deepseek` | API Key |
 | **Groq** | `groq` | API Key |
 | **Mistral** | `mistral` | API Key |
@@ -151,6 +152,13 @@ Any arguments not listed above are passed directly to `agy` CLI.
 | **llama.cpp (Local)** | `llamacpp` | None |
 | **NVIDIA NIM** | `nvidia` | API Key |
 | **Custom (OpenAI-compatible)** | `custom` | API Key |
+
+For Hugging Face, create a fine-grained user access token with permission to call
+Inference Providers. Add a model with `antigravity models add`, choose `huggingface`,
+and enter the Hugging Face model ID (for example, `Qwen/Qwen3-...`). The API URL
+defaults to `https://router.huggingface.co/v1/chat/completions`; the token is sent
+as a Bearer token. Select a model available to your account through Hugging Face
+Inference Providers.
 
 
 ## Installation
